@@ -145,6 +145,7 @@ $.jgrid.extend({
 							case "password":
 							case "text":
 							case "textarea":
+							case "pickerTree":
 							case "button":
 								postdata[this.name] = $(this).val();
 							break;
@@ -269,6 +270,11 @@ $.jgrid.extend({
 						$.jgrid.bindEv.call($t, elc, opt);
 						retpos[cnt] = i;
 						cnt++;
+						//pickerTree组件需要在elc统计节点生成span标签，需要在elc完成append操作再初始化
+            if (this.edittype == "pickerTree") {
+                var setting = $.extend(opt, { targetElem: elc, selected: tmp });
+                new cngc.pickerTree(setting);
+            }
 					}
 				});
 				if( cnt > 0) {
@@ -361,6 +367,7 @@ $.jgrid.extend({
 							case "text":
 							case "button" :
 							case "image":
+							case "pickerTree":
 							case "textarea":
 								if(tmp === "&nbsp;" || tmp === "&#160;" || (tmp.length===1 && tmp.charCodeAt(0)===160) ) {tmp='';}
 								$("#"+nm,fmid).val(tmp);

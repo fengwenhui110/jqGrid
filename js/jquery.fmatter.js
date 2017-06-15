@@ -1,4 +1,4 @@
-/*
+  /*
 **
  * formatter for values but most of the values if for jqGrid
  * Some of this was inspired and based on how YUI does the table datagrid but in jQuery fashion
@@ -34,6 +34,66 @@
 	//opts can be id:row id for the row, rowdata:the data for the row, colmodel:the column model for this column
 	//example {id:1234,}
 	$.extend($.fmatter,{
+    getDicData: function(cm) {
+      var dicData, temp;
+      if (cm.editoptions.dicData) {
+          dicData = cm.editoptions.dicData;
+      } else {
+          if (cm.edittype === "pickerTree") {
+              if (cm.editoptions.nodes) {
+                  temp = cm.editoptions.nodes;
+              } else if (cm.editoptions.async.url) {
+                  temp = cm.editoptions.async.url;
+              }
+          } else {
+              if (cm.editoptions.data) {
+                  temp = cm.editoptions.data;
+              } else if (cm.editoptions.url) {
+                  temp = cm.editoptions.url;
+              }
+          }
+          if (typeof temp === "string") {
+              $.ajax({
+                  url: temp,
+                  dataType: "json",
+                  async: false,
+                  success: function(data) {
+                      cm.editoptions.dicData = data;
+                      dicData = data;
+                  },
+                  error: function(xhr, error, thrown) {
+                      cngc.utils.loadError(xhr, error, thrown);
+                  }
+              })
+          } else if (typeof temp === "object") {
+              cm.editoptions.dicData = temp;
+              dicData = temp;
+          } else {
+              dicData = "";
+          }
+      }
+      return dicData;
+		},
+		//编辑类型为radio、checkbox、select、comboboxlist、pickerTree时使用,获取value对应name或name对应的value
+		getValue: function(data, value, editType, getType, idKey) {
+        idKey = idKey ? idKey : "id"; //pickerTree默认值属性为id
+        for (var i = 0, dataLength = data.length; i < dataLength; i++) {
+            //为兼容radio、checkbox的旧版格式，先判断是否存在label，否则去name
+            if (getType == "value") {
+                if (((editType == "radio" || editType == "checkbox") ? (data[i].label ? data[i].label : data[i].name) : data[i].name) == value) {
+                    return editType == "pickerTree" ? data[i][idKey] : data[i].value;
+                } else {
+                    if (i == (dataLength - 1)) return value;
+                }
+            } else {
+                if (data[i].value == value || data[i][idKey] == value) {
+                    return (editType == "radio" || editType == "checkbox") ? (data[i].label ? data[i].label : data[i].name) : data[i].name;
+                } else {
+                    if (i == (dataLength - 1)) return value;
+                }
+            }
+        }
+    },
 		isBoolean : function(o) {
 			return typeof o === 'boolean';
 		},
@@ -417,6 +477,9 @@
 				case 'select' :
 					ret = $.unformat.select(cellval,options,pos,cnt);
 					break;
+				case 'dictionary':
+          ret = $(cellval).attr("value");
+          break;
 				case 'actions':
 					return "";
 				default:
@@ -483,6 +546,41 @@
 			return $.jgrid.parseDate.call(this, op.newformat,cellval,op.srcformat,op);
 		}
 		return $.fn.fmatter.defaultFormat(cellval, opts);
+	};
+	//编辑类型为radio、checkbox、select的默认格式化,显示name
+	$.fn.fmatter.dictionary = function(cellval, opts) {
+    var colmodel = opts.colModel,
+        cellname = "",
+        tempArray,
+        data = $.fmatter.getDicData(colmodel),
+        eidttype = opts.colModel.edittype;
+    //数据为空提示用户
+    if (typeof cellval == "undefined") {
+        cellname = "";
+    } else if (data === "") {
+    	//todo i18n
+      alert("字典为空");
+      cellname = cellval;
+    } else {
+        if (eidttype == "checkbox" || eidttype == "comboboxlist" || eidttype == "pickerTree") {
+            tempArray = $.isArray(cellval) ? cellval : cellval.split(",");
+            for (var p = 0, checkLength = tempArray.length; p < checkLength; p++) {
+                if (eidttype == "pickerTree") {
+                    try { //如idKey没定义会报错，采用默认idKey为id处理
+                        var idKey = colmodel.editoptions.data.simpleData.idKey;
+                        cellname = cellname + (cellname ? "," : "") + $.fmatter.getValue(data, tempArray[p], eidttype, "name", idKey);
+                    } catch (e) {
+                        cellname = cellname + (cellname ? "," : "") + $.fmatter.getValue(data, tempArray[p], eidttype);
+                    }
+                } else {
+                    cellname = cellname + (cellname ? "," : "") + $.fmatter.getValue(data, tempArray[p], eidttype);
+                }
+            }
+        } else {
+            cellname = $.fmatter.getValue(data, cellval, eidttype);
+        }
+    }
+    return cellname;
 	};
 //module end
 }));

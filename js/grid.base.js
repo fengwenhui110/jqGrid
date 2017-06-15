@@ -11,7 +11,7 @@
 /*jshint evil:true, eqeqeq:false, eqnull:true, devel:true */
 /*global jQuery, window, define, navigator, document */
 (function( factory ) {
-	"use strict";
+  "use strict";
 	if ( typeof define === "function" && define.amd ) {
 		// AMD. Register as an anonymous module.
 		define([ 
@@ -817,7 +817,7 @@ $.extend($.jgrid,{
 	return new QueryObject(source,null);
 	},
 	getMethod: function (name) {
-        return this.getAccessor($.fn.jqGrid, name);
+				return this.getAccessor($.fn.jqGrid, name);
 	},
 	extend : function(methods) {
 		$.extend($.fn.jqGrid,methods);
@@ -1166,7 +1166,7 @@ $.extend($.jgrid,{
 		}
 	}
 });
-
+  
 $.fn.jqGrid = function( pin ) {
 	if (typeof pin === 'string') {
 		var fn = $.jgrid.getMethod(pin);
@@ -1177,6 +1177,54 @@ $.fn.jqGrid = function( pin ) {
 		return fn.apply(this,args);
 	}
 	return this.each( function() {
+		//单元格td添加value属性
+		function getCellValue(rowId, val, rowObject, cm) {
+				var values = "",
+						dicData, tempArray = [];
+				dicData = $.fmatter.getDicData(cm);
+				//数据为空提示用户
+				if (dicData === "") {
+					//todo i18n
+					alert("字典为空!");
+					values = val;
+				} else if (typeof val == "undefined") { //新增行val为undefined
+						values = "";
+				} else {
+						if (cm.edittype == "checkbox" || cm.edittype == "comboboxlist" || cm.edittype == "pickerTree") {
+								tempArray = $.isArray(val) ? val : val.split(",");
+								for (var p = 0, checkLength = tempArray.length; p < checkLength; p++) {
+										if (cm.edittype == "pickerTree") {
+												try { //如idKey没定义会报错，采用默认idKey为id处理
+														var idKey = cm.editoptions.data.simpleData.idKey;
+														values = values + (values ? "," : "") + $.fmatter.getValue(dicData, tempArray[p], cm.edittype, "value", idKey);
+												} catch (e) {
+														values = values + (values ? "," : "") + $.fmatter.getValue(dicData, tempArray[p], cm.edittype, "value");
+												}
+										} else {
+												values = values + (values ? "," : "") + $.fmatter.getValue(dicData, tempArray[p], cm.edittype, "value");
+										}
+								}
+						} else {
+								values = $.fmatter.getValue(dicData, val, cm.edittype, "value");
+						}
+				}
+				return "value=" + values;
+		}
+		//初始化行数据时，给编辑类型为radio、checkbox、select、comboboxlist、pickerTree、password添加默认处理函数
+		for (var i = 0, colLength = pin.colModel.length; i < colLength; i++) {
+				var colContent = pin.colModel[i];
+				if (colContent.editable) {
+						switch (colContent.edittype) {
+								case "pickerTree":
+										if (typeof colContent.cellattr == "undefined") colContent.cellattr = getCellValue;
+										colContent.formatter = "dictionary";
+										colContent.classes = "jqgirdPicker";
+										break;
+								default:
+										break;
+						}
+				}
+		}
 		if(this.grid) {return;}
 		var localData;
 		if (pin != null && pin.data !== undefined) {

@@ -334,6 +334,21 @@ $.extend($.jgrid,{
 // Form Functions
 	createEl : function(eltype,options,vl,autowidth, ajaxso) {
 		var elem = "", $t = this;
+		function bindEv(el, opt) {
+        if ($.isFunction(opt.dataInit)) {
+            opt.dataInit(el);
+        }
+        if (opt.dataEvents) {
+            $.each(opt.dataEvents, function() {
+                if (this.data !== undefined) {
+                    $(el).bind(this.type, this.data, this.fn);
+                } else {
+                    $(el).bind(this.type, this.fn);
+                }
+            });
+        }
+        return opt;
+    }
 		function setAttributes(elm, atr, exl ) {
 			var exclude = ['dataInit','dataEvents','dataUrl', 'buildSelect','sopt', 'searchhidden', 'defaultValue', 'attr', 'custom_element', 'custom_value', 'oper'];
 			exclude = exclude.concat(['cacheUrlData','delimiter','separator']);
@@ -535,6 +550,18 @@ $.extend($.jgrid,{
 				elem.type = eltype;
 				setAttributes(elem, options);
 				break;
+			case "pickerTree":
+        elem = document.createElement("input");
+        elem.type = "text";
+        elem.value = vl;
+        elem.id = options.id;
+        options = bindEv(elem, options);
+        if (options.dicData) {
+            options.nodes = options.dicData;
+        }
+        //var setting = $.extend(options,{targetElem:elem,value:vl});
+        //new cngc.pickerTree(setting);修改到savecell处理
+        break;
 			case "custom" :
 				elem = document.createElement("span");
 				try {

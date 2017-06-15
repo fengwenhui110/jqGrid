@@ -217,6 +217,7 @@ $.jgrid.extend({
 						case 'text':
 						case 'password':
 						case 'textarea':
+						case "pickerTree":
 						case "button" :
 							tmp[nm]=$("input, textarea",this).val();
 							elem = $("input, textarea",this);

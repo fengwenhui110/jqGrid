@@ -66,6 +66,11 @@ $.jgrid.extend({
 			}
 			cm = $t.p.colModel[iCol];
 			nm = cm.name;
+			/*********************************编辑类型为下拉树，为支持单击父节点时加载子节点数据场景，单元格编辑时需去掉默认设置的格式化*******/
+      /*if (cm.edittype == "pickerTree") {
+          cm.formatter = undefined;
+      }*/
+      /***********************************************************end*******************************************************************/
 			if (nm==='subgrid' || nm==='cb' || nm==='rn') {return;}
 			try {
 				cc = $($t.rows[iRow].cells[iCol]);
@@ -106,6 +111,12 @@ $.jgrid.extend({
 				cc.html("").append(elc).attr("tabindex","0");
 				$.jgrid.bindEv.call($t, elc, opt);
 				window.setTimeout(function () { $(elc).focus();},1);
+				/********************pickerTree组件需要在elc统计节点生成span标签，需要在elc完成append操作再初始化************************************/
+				if(cm.edittype == "pickerTree") {
+					var setting = $.extend(opt, { targetElem: elc, selected: tmp });
+          new cngc.pickerTree(setting);
+				}
+				/*************************************************************end*******************************************************************/
 				$("input, select, textarea",cc).on("keydown",function(e) {
 					if (e.keyCode === 27) {
 						if($("input.hasDatepicker",cc).length >0) {
@@ -182,6 +193,16 @@ $.jgrid.extend({
 						v = $("#"+iRow+"_"+nmjq, trow).is(":checked") ? cbv[0] : cbv[1];
 						v2=v;
 						break;
+					/****************************对grid中col为pickertree类型进行处理**********************************************************************/
+					case "pickerTree":
+            v = $("#" + iRow + "_" + nmjq).val();
+            v2 = $("#" + iRow + "_" + nmjq + "_text_input").val();
+            if ("" === v && "请选择" === v2) {
+                v2 = ""
+            }
+            //if(cm.formatter) { v2 = v; }
+            break;
+          /*************************************************************end*******************************************************************/
 					case "password":
 					case "text":
 					case "textarea":
@@ -266,7 +287,14 @@ $.jgrid.extend({
 													v = "";
 												}
 												$(cc).empty();
-												$($t).jqGrid("setCell",$t.p.savedRow[fr].rowId, iCol, v2, false, false, true);
+												//特殊编辑类型把value值保存在td属性里
+                        if (cm.edittype == "select" || cm.edittype == "radio" || cm.edittype == "checkbox" ||
+                            cm.edittype == "comboboxlist" || cm.edittype == "pickerTree") {
+                            $($t).jqGrid("setCell", $t.p.savedRow[fr].rowId, iCol, v2, false, { value: v }, true);
+                        } else {
+                            $($t).jqGrid("setCell",$t.p.savedRow[fr].rowId, iCol, v2, false, false, true);
+                        }
+												
 												$(cc).addClass("dirty-cell");
 												$(trow).addClass("edited");
 												$($t).triggerHandler("jqGridAfterSaveCell", [$t.p.savedRow[fr].rowId, nm, v, iRow, iCol]);
@@ -330,7 +358,12 @@ $.jgrid.extend({
 						}
 						if ($t.p.cellsubmit === 'clientArray') {
 							$(cc).empty();
-							$($t).jqGrid("setCell", $t.p.savedRow[fr].rowId, iCol, v2, false, false, true);
+							if (cm.edittype == "select" || cm.edittype == "radio" || cm.edittype == "checkbox" ||
+                  cm.edittype == "comboboxlist" || cm.edittype == "pickerTree") { //特殊编辑类型把value值保存在td属性里
+                  $($t).jqGrid("setCell", $t.p.savedRow[fr].rowId, iCol, v2, false, { value: v }, true);
+              } else {
+                  $($t).jqGrid("setCell", $t.p.savedRow[fr].rowId, iCol, v2, false, false, true);
+              }
 							$(cc).addClass("dirty-cell");
 							$(trow).addClass("edited");
 							$($t).triggerHandler("jqGridAfterSaveCell", [$t.p.savedRow[fr].rowId, nm, v, iRow, iCol]);
