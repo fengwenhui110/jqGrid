@@ -38,6 +38,76 @@
 "use strict";
 //module begin
 $.jgrid.extend({
+	// 获取grid中编辑、新增、删除的json数据
+  // -- by zhanghp 20120804 增加参数validated bool类型，默认值 true
+  // 如果设置为false，不进行数据验证就进行提交数据获取操作
+  getJsontosubmit: function(custompara, validated) {
+	    var insertrow = [],
+	        editrow = [],
+	        editrowobj,
+	        $t = this[0],
+	        jsonText, isid = false,
+	        targetjson = { addRows: "", updateRows: "", deleteRows: "" },
+	        delids = $t.p._delrowid,
+	        newidrule = $t.p.addParams.rowID;
+	    //设置之前保存编辑状态的单元格
+	    if ($t.p.savedRow.length > 0) {
+	        $($t).jqGrid("saveCell", $t.p.savedRow[0].id, $t.p.savedRow[0].ic);
+	    }
+	    //获取编辑的数据
+	    editrowobj = jQuery($t).jqGrid('getChangedCells', 'all');
+	    for (var i = 0; i < $t.p.colModel.length; i++) {
+	        if ($t.p.colModel[i].name == "id") {
+	            isid = true;
+	            break;
+	        }
+	    }
+	    for (var i = 0; i < editrowobj.length; i++) {
+	        if ($("#" + editrowobj[i].id, this.id).hasClass("added")) {
+	            //新增数据主键值恢复为空 ，不传到后台
+	            // var ids = $.inArray("id", editrowobj[i]);
+	            // editrowobj[i].splice( ids ,1 );
+	            insertrow.push(editrowobj[i]);
+	        } else {
+	            editrow.push(editrowobj[i]);
+	        }
+	        //如果列模型没定义id去掉id属性
+	        if (!isid) {
+	            editrowobj[i].id = undefined;
+	        }
+	    }
+
+	    //如果删除数据为新增数据，则不提交到服务器端
+	    for (var j = 0; j < delids.length; j++) {
+	        if (delids[j].search(newidrule) !== -1) {
+	            delids.splice(j, 1);
+	            --j;
+	        }
+	    }
+	    targetjson.addRows = insertrow;
+	    targetjson.updateRows = editrow;
+	    targetjson.deleteRows = delids;
+
+	    // --by zhanghp 2012/08/07 start
+	    // todo 增加验证
+	    /*if ('undefined' === typeof validated || true === validated) {
+	        var isValid = this.checkGridData(targetjson);
+	        if (!isValid[0][0]) {
+	        	//todo i18n
+	          alert("校验失败!");
+	          return null;
+	        }
+	    }*/
+	    // --by zhanghp 2010/08/07 end
+
+	    if (typeof custompara != 'undefined') {
+	        targetjson.custompara = custompara;
+	    }
+
+	    //序列化json对象
+	    jsonText = JSON.stringify(targetjson);
+	    return jsonText;
+	},
 	editCell : function (iRow,iCol, ed){
 		return this.each(function (){
 			var $t = this, nm, tmp,cc, cm,
