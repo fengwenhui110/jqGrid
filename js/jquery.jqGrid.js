@@ -1,6 +1,6 @@
 /**
 *
-* @license Guriddo jqGrid JS - v5.2.1 - 2017-05-31
+* @license Guriddo jqGrid JS - v5.2.1 - 2017-06-16
 * Copyright(c) 2008, Tony Tomov, tony@trirand.com
 * 
 * License: http://guriddo.net/?page_id=103334
@@ -812,7 +812,7 @@ $.extend($.jgrid,{
 	return new QueryObject(source,null);
 	},
 	getMethod: function (name) {
-        return this.getAccessor($.fn.jqGrid, name);
+				return this.getAccessor($.fn.jqGrid, name);
 	},
 	extend : function(methods) {
 		$.extend($.fn.jqGrid,methods);
@@ -1161,7 +1161,7 @@ $.extend($.jgrid,{
 		}
 	}
 });
-
+  
 $.fn.jqGrid = function( pin ) {
 	if (typeof pin === 'string') {
 		var fn = $.jgrid.getMethod(pin);
@@ -1172,6 +1172,54 @@ $.fn.jqGrid = function( pin ) {
 		return fn.apply(this,args);
 	}
 	return this.each( function() {
+		//单元格td添加value属性
+		function getCellValue(rowId, val, rowObject, cm) {
+				var values = "",
+						dicData, tempArray = [];
+				dicData = $.fmatter.getDicData(cm);
+				//数据为空提示用户
+				if (dicData === "") {
+					//todo i18n
+					alert("字典为空!");
+					values = val;
+				} else if (typeof val == "undefined") { //新增行val为undefined
+						values = "";
+				} else {
+						if (cm.edittype == "checkbox" || cm.edittype == "comboboxlist" || cm.edittype == "pickerTree") {
+								tempArray = $.isArray(val) ? val : val.split(",");
+								for (var p = 0, checkLength = tempArray.length; p < checkLength; p++) {
+										if (cm.edittype == "pickerTree") {
+												try { //如idKey没定义会报错，采用默认idKey为id处理
+														var idKey = cm.editoptions.data.simpleData.idKey;
+														values = values + (values ? "," : "") + $.fmatter.getValue(dicData, tempArray[p], cm.edittype, "value", idKey);
+												} catch (e) {
+														values = values + (values ? "," : "") + $.fmatter.getValue(dicData, tempArray[p], cm.edittype, "value");
+												}
+										} else {
+												values = values + (values ? "," : "") + $.fmatter.getValue(dicData, tempArray[p], cm.edittype, "value");
+										}
+								}
+						} else {
+								values = $.fmatter.getValue(dicData, val, cm.edittype, "value");
+						}
+				}
+				return "value=" + values;
+		}
+		//初始化行数据时，给编辑类型为radio、checkbox、select、comboboxlist、pickerTree、password添加默认处理函数
+		for (var i = 0, colLength = pin.colModel.length; i < colLength; i++) {
+				var colContent = pin.colModel[i];
+				if (colContent.editable) {
+						switch (colContent.edittype) {
+								case "pickerTree":
+										if (typeof colContent.cellattr == "undefined") colContent.cellattr = getCellValue;
+										colContent.formatter = "dictionary";
+										colContent.classes = "jqgirdPicker";
+										break;
+								default:
+										break;
+						}
+				}
+		}
 		if(this.grid) {return;}
 		var localData;
 		if (pin != null && pin.data !== undefined) {
@@ -5633,6 +5681,76 @@ $.jgrid.extend({
 
 //module begin
 $.jgrid.extend({
+	// 获取grid中编辑、新增、删除的json数据
+  // -- by zhanghp 20120804 增加参数validated bool类型，默认值 true
+  // 如果设置为false，不进行数据验证就进行提交数据获取操作
+  getJsontosubmit: function(custompara, validated) {
+	    var insertrow = [],
+	        editrow = [],
+	        editrowobj,
+	        $t = this[0],
+	        jsonText, isid = false,
+	        targetjson = { addRows: "", updateRows: "", deleteRows: "" },
+	        delids = $t.p._delrowid,
+	        newidrule = $t.p.addParams.rowID;
+	    //设置之前保存编辑状态的单元格
+	    if ($t.p.savedRow.length > 0) {
+	        $($t).jqGrid("saveCell", $t.p.savedRow[0].id, $t.p.savedRow[0].ic);
+	    }
+	    //获取编辑的数据
+	    editrowobj = jQuery($t).jqGrid('getChangedCells', 'all');
+	    for (var i = 0; i < $t.p.colModel.length; i++) {
+	        if ($t.p.colModel[i].name == "id") {
+	            isid = true;
+	            break;
+	        }
+	    }
+	    for (var i = 0; i < editrowobj.length; i++) {
+	        if ($("#" + editrowobj[i].id, this.id).hasClass("added")) {
+	            //新增数据主键值恢复为空 ，不传到后台
+	            // var ids = $.inArray("id", editrowobj[i]);
+	            // editrowobj[i].splice( ids ,1 );
+	            insertrow.push(editrowobj[i]);
+	        } else {
+	            editrow.push(editrowobj[i]);
+	        }
+	        //如果列模型没定义id去掉id属性
+	        if (!isid) {
+	            editrowobj[i].id = undefined;
+	        }
+	    }
+
+	    //如果删除数据为新增数据，则不提交到服务器端
+	    for (var j = 0; j < delids.length; j++) {
+	        if (delids[j].search(newidrule) !== -1) {
+	            delids.splice(j, 1);
+	            --j;
+	        }
+	    }
+	    targetjson.addRows = insertrow;
+	    targetjson.updateRows = editrow;
+	    targetjson.deleteRows = delids;
+
+	    // --by zhanghp 2012/08/07 start
+	    // todo 增加验证
+	    /*if ('undefined' === typeof validated || true === validated) {
+	        var isValid = this.checkGridData(targetjson);
+	        if (!isValid[0][0]) {
+	        	//todo i18n
+	          alert("校验失败!");
+	          return null;
+	        }
+	    }*/
+	    // --by zhanghp 2010/08/07 end
+
+	    if (typeof custompara != 'undefined') {
+	        targetjson.custompara = custompara;
+	    }
+
+	    //序列化json对象
+	    jsonText = JSON.stringify(targetjson);
+	    return jsonText;
+	},
 	editCell : function (iRow,iCol, ed){
 		return this.each(function (){
 			var $t = this, nm, tmp,cc, cm,
@@ -5661,6 +5779,11 @@ $.jgrid.extend({
 			}
 			cm = $t.p.colModel[iCol];
 			nm = cm.name;
+			/*********************************编辑类型为下拉树，为支持单击父节点时加载子节点数据场景，单元格编辑时需去掉默认设置的格式化*******/
+      /*if (cm.edittype == "pickerTree") {
+          cm.formatter = undefined;
+      }*/
+      /***********************************************************end*******************************************************************/
 			if (nm==='subgrid' || nm==='cb' || nm==='rn') {return;}
 			try {
 				cc = $($t.rows[iRow].cells[iCol]);
@@ -5701,6 +5824,12 @@ $.jgrid.extend({
 				cc.html("").append(elc).attr("tabindex","0");
 				$.jgrid.bindEv.call($t, elc, opt);
 				window.setTimeout(function () { $(elc).focus();},1);
+				/********************pickerTree组件需要在elc统计节点生成span标签，需要在elc完成append操作再初始化************************************/
+				if(cm.edittype == "pickerTree") {
+					var setting = $.extend(opt, { targetElem: elc, selected: tmp });
+          new cngc.pickerTree(setting);
+				}
+				/*************************************************************end*******************************************************************/
 				$("input, select, textarea",cc).on("keydown",function(e) {
 					if (e.keyCode === 27) {
 						if($("input.hasDatepicker",cc).length >0) {
@@ -5777,6 +5906,16 @@ $.jgrid.extend({
 						v = $("#"+iRow+"_"+nmjq, trow).is(":checked") ? cbv[0] : cbv[1];
 						v2=v;
 						break;
+					/****************************对grid中col为pickertree类型进行处理**********************************************************************/
+					case "pickerTree":
+            v = $("#" + iRow + "_" + nmjq).val();
+            v2 = $("#" + iRow + "_" + nmjq + "_text_input").val();
+            if ("" === v && "请选择" === v2) {
+                v2 = ""
+            }
+            //if(cm.formatter) { v2 = v; }
+            break;
+          /*************************************************************end*******************************************************************/
 					case "password":
 					case "text":
 					case "textarea":
@@ -5861,7 +6000,14 @@ $.jgrid.extend({
 													v = "";
 												}
 												$(cc).empty();
-												$($t).jqGrid("setCell",$t.p.savedRow[fr].rowId, iCol, v2, false, false, true);
+												//特殊编辑类型把value值保存在td属性里
+                        if (cm.edittype == "select" || cm.edittype == "radio" || cm.edittype == "checkbox" ||
+                            cm.edittype == "comboboxlist" || cm.edittype == "pickerTree") {
+                            $($t).jqGrid("setCell", $t.p.savedRow[fr].rowId, iCol, v2, false, { value: v }, true);
+                        } else {
+                            $($t).jqGrid("setCell",$t.p.savedRow[fr].rowId, iCol, v2, false, false, true);
+                        }
+												
 												$(cc).addClass("dirty-cell");
 												$(trow).addClass("edited");
 												$($t).triggerHandler("jqGridAfterSaveCell", [$t.p.savedRow[fr].rowId, nm, v, iRow, iCol]);
@@ -5925,7 +6071,12 @@ $.jgrid.extend({
 						}
 						if ($t.p.cellsubmit === 'clientArray') {
 							$(cc).empty();
-							$($t).jqGrid("setCell", $t.p.savedRow[fr].rowId, iCol, v2, false, false, true);
+							if (cm.edittype == "select" || cm.edittype == "radio" || cm.edittype == "checkbox" ||
+                  cm.edittype == "comboboxlist" || cm.edittype == "pickerTree") { //特殊编辑类型把value值保存在td属性里
+                  $($t).jqGrid("setCell", $t.p.savedRow[fr].rowId, iCol, v2, false, { value: v }, true);
+              } else {
+                  $($t).jqGrid("setCell", $t.p.savedRow[fr].rowId, iCol, v2, false, false, true);
+              }
 							$(cc).addClass("dirty-cell");
 							$(trow).addClass("edited");
 							$($t).triggerHandler("jqGridAfterSaveCell", [$t.p.savedRow[fr].rowId, nm, v, iRow, iCol]);
@@ -6493,6 +6644,21 @@ $.extend($.jgrid,{
 // Form Functions
 	createEl : function(eltype,options,vl,autowidth, ajaxso) {
 		var elem = "", $t = this;
+		function bindEv(el, opt) {
+        if ($.isFunction(opt.dataInit)) {
+            opt.dataInit(el);
+        }
+        if (opt.dataEvents) {
+            $.each(opt.dataEvents, function() {
+                if (this.data !== undefined) {
+                    $(el).bind(this.type, this.data, this.fn);
+                } else {
+                    $(el).bind(this.type, this.fn);
+                }
+            });
+        }
+        return opt;
+    }
 		function setAttributes(elm, atr, exl ) {
 			var exclude = ['dataInit','dataEvents','dataUrl', 'buildSelect','sopt', 'searchhidden', 'defaultValue', 'attr', 'custom_element', 'custom_value', 'oper'];
 			exclude = exclude.concat(['cacheUrlData','delimiter','separator']);
@@ -6694,6 +6860,18 @@ $.extend($.jgrid,{
 				elem.type = eltype;
 				setAttributes(elem, options);
 				break;
+			case "pickerTree":
+        elem = document.createElement("input");
+        elem.type = "text";
+        elem.value = vl;
+        elem.id = options.id;
+        options = bindEv(elem, options);
+        if (options.dicData) {
+            options.nodes = options.dicData;
+        }
+        //var setting = $.extend(options,{targetElem:elem,value:vl});
+        //new cngc.pickerTree(setting);修改到savecell处理
+        break;
 			case "custom" :
 				elem = document.createElement("span");
 				try {
@@ -8754,6 +8932,7 @@ $.jgrid.extend({
 							case "password":
 							case "text":
 							case "textarea":
+							case "pickerTree":
 							case "button":
 								postdata[this.name] = $(this).val();
 							break;
@@ -8878,6 +9057,11 @@ $.jgrid.extend({
 						$.jgrid.bindEv.call($t, elc, opt);
 						retpos[cnt] = i;
 						cnt++;
+						//pickerTree组件需要在elc统计节点生成span标签，需要在elc完成append操作再初始化
+            if (this.edittype == "pickerTree") {
+                var setting = $.extend(opt, { targetElem: elc, selected: tmp });
+                new cngc.pickerTree(setting);
+            }
 					}
 				});
 				if( cnt > 0) {
@@ -8970,6 +9154,7 @@ $.jgrid.extend({
 							case "text":
 							case "button" :
 							case "image":
+							case "pickerTree":
 							case "textarea":
 								if(tmp === "&nbsp;" || tmp === "&#160;" || (tmp.length===1 && tmp.charCodeAt(0)===160) ) {tmp='';}
 								$("#"+nm,fmid).val(tmp);
@@ -12345,6 +12530,7 @@ $.jgrid.extend({
 						case 'text':
 						case 'password':
 						case 'textarea':
+						case "pickerTree":
 						case "button" :
 							tmp[nm]=$("input, textarea",this).val();
 							elem = $("input, textarea",this);
@@ -15387,6 +15573,66 @@ hs=function(w,t,c){return w.each(function(){var s=this._jqm;$(t).each(function()
 	//opts can be id:row id for the row, rowdata:the data for the row, colmodel:the column model for this column
 	//example {id:1234,}
 	$.extend($.fmatter,{
+    getDicData: function(cm) {
+      var dicData, temp;
+      if (cm.editoptions.dicData) {
+          dicData = cm.editoptions.dicData;
+      } else {
+          if (cm.edittype === "pickerTree") {
+              if (cm.editoptions.nodes) {
+                  temp = cm.editoptions.nodes;
+              } else if (cm.editoptions.async.url) {
+                  temp = cm.editoptions.async.url;
+              }
+          } else {
+              if (cm.editoptions.data) {
+                  temp = cm.editoptions.data;
+              } else if (cm.editoptions.url) {
+                  temp = cm.editoptions.url;
+              }
+          }
+          if (typeof temp === "string") {
+              $.ajax({
+                  url: temp,
+                  dataType: "json",
+                  async: false,
+                  success: function(data) {
+                      cm.editoptions.dicData = data;
+                      dicData = data;
+                  },
+                  error: function(xhr, error, thrown) {
+                      cngc.utils.loadError(xhr, error, thrown);
+                  }
+              })
+          } else if (typeof temp === "object") {
+              cm.editoptions.dicData = temp;
+              dicData = temp;
+          } else {
+              dicData = "";
+          }
+      }
+      return dicData;
+		},
+		//编辑类型为radio、checkbox、select、comboboxlist、pickerTree时使用,获取value对应name或name对应的value
+		getValue: function(data, value, editType, getType, idKey) {
+        idKey = idKey ? idKey : "id"; //pickerTree默认值属性为id
+        for (var i = 0, dataLength = data.length; i < dataLength; i++) {
+            //为兼容radio、checkbox的旧版格式，先判断是否存在label，否则去name
+            if (getType == "value") {
+                if (((editType == "radio" || editType == "checkbox") ? (data[i].label ? data[i].label : data[i].name) : data[i].name) == value) {
+                    return editType == "pickerTree" ? data[i][idKey] : data[i].value;
+                } else {
+                    if (i == (dataLength - 1)) return value;
+                }
+            } else {
+                if (data[i].value == value || data[i][idKey] == value) {
+                    return (editType == "radio" || editType == "checkbox") ? (data[i].label ? data[i].label : data[i].name) : data[i].name;
+                } else {
+                    if (i == (dataLength - 1)) return value;
+                }
+            }
+        }
+    },
 		isBoolean : function(o) {
 			return typeof o === 'boolean';
 		},
@@ -15770,6 +16016,9 @@ hs=function(w,t,c){return w.each(function(){var s=this._jqm;$(t).each(function()
 				case 'select' :
 					ret = $.unformat.select(cellval,options,pos,cnt);
 					break;
+				case 'dictionary':
+          ret = $(cellval).attr("value");
+          break;
 				case 'actions':
 					return "";
 				default:
@@ -15836,6 +16085,41 @@ hs=function(w,t,c){return w.each(function(){var s=this._jqm;$(t).each(function()
 			return $.jgrid.parseDate.call(this, op.newformat,cellval,op.srcformat,op);
 		}
 		return $.fn.fmatter.defaultFormat(cellval, opts);
+	};
+	//编辑类型为radio、checkbox、select的默认格式化,显示name
+	$.fn.fmatter.dictionary = function(cellval, opts) {
+    var colmodel = opts.colModel,
+        cellname = "",
+        tempArray,
+        data = $.fmatter.getDicData(colmodel),
+        eidttype = opts.colModel.edittype;
+    //数据为空提示用户
+    if (typeof cellval == "undefined") {
+        cellname = "";
+    } else if (data === "") {
+    	//todo i18n
+      alert("字典为空");
+      cellname = cellval;
+    } else {
+        if (eidttype == "checkbox" || eidttype == "comboboxlist" || eidttype == "pickerTree") {
+            tempArray = $.isArray(cellval) ? cellval : cellval.split(",");
+            for (var p = 0, checkLength = tempArray.length; p < checkLength; p++) {
+                if (eidttype == "pickerTree") {
+                    try { //如idKey没定义会报错，采用默认idKey为id处理
+                        var idKey = colmodel.editoptions.data.simpleData.idKey;
+                        cellname = cellname + (cellname ? "," : "") + $.fmatter.getValue(data, tempArray[p], eidttype, "name", idKey);
+                    } catch (e) {
+                        cellname = cellname + (cellname ? "," : "") + $.fmatter.getValue(data, tempArray[p], eidttype);
+                    }
+                } else {
+                    cellname = cellname + (cellname ? "," : "") + $.fmatter.getValue(data, tempArray[p], eidttype);
+                }
+            }
+        } else {
+            cellname = $.fmatter.getValue(data, cellval, eidttype);
+        }
+    }
+    return cellname;
 	};
 
 //module begin
