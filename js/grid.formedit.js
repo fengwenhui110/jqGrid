@@ -273,7 +273,9 @@ $.jgrid.extend({
 						//pickerTree组件需要在elc统计节点生成span标签，需要在elc完成append操作再初始化
             if (this.edittype == "pickerTree") {
                 var setting = $.extend(opt, { targetElem: elc, selected: tmp });
-                new cngc.pickerTree(setting);
+                window.setTimeout(function(){
+                  new cngc.pickerTree(setting);
+                },0);
             }
 					}
 				});
