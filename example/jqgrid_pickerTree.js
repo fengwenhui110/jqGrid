@@ -10,27 +10,27 @@ var grid;
         }, {
             id: 101,
             pId: 1,
-            name: '合同类'
+            name: '1'
         }, {
             id: 102,
             pId: 1,
-            name: '调度类'
+            name: '2'
         }, {
             id: 103,
             pId: 1,
-            name: '统计类'
+            name: '3'
         }, {
             id: 104,
             pId: 1,
-            name: '消息类'
+            name: '4'
         }, {
             id: 105,
             pId: 1,
-            name: '其他类'
+            name: '5'
         }];
         var mydata = [{
             nodeId: '1',
-            nodeNm: '配套产品准备',
+            nodeNm: 'xxxxx',
             nodeType: '101'
         }];
         var options = {
@@ -38,6 +38,7 @@ var grid;
             cellsubmit: 'clientArray',
             datatype: 'local',
             data: mydata,
+            width: 760,
             colModel: [{
                 name: 'nodeId',
                 key: true,
@@ -77,19 +78,8 @@ var grid;
             }
             ],
             height: 300,
-            sortorder: 'desc', // 排序顺序，升序或者降序（asc or desc）
-            cellEdit: true // 设置是否允许行内编辑
+            cellEdit: true
         };
-        $.extend(true, $.jgrid.defaults, {
-            _delrowid: [], // 保存删除行id
-            addParams: {
-                serial: 0,
-                rowID: 'new_row'
-            },
-            responsive: true,
-            styleUI: 'Bootstrap',
-            class: 'table-striped'
-        });
         grid = $('#jqGrid').jqGrid(options);
     });
 }();

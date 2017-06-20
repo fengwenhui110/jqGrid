@@ -26,7 +26,11 @@
 //module begin
 $.jgrid = $.jgrid || {};
 if(!$.jgrid.hasOwnProperty("defaults")) {
-	$.jgrid.defaults = {};
+	$.jgrid.defaults = {
+		styleUI: 'Bootstrap',
+		responsive: true,
+		regional: 'cn'
+	};
 }
 $.extend($.jgrid,{
 	version : "5.2.1",
