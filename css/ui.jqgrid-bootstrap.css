@@ -471,7 +471,7 @@ div.tablediv > .table-bordered {
 	width: 500px; 
 	position: absolute; 
 	/*padding: 5px; */
-	overflow:visible;
+	overflow:visible !important;;
 }
 .ui-jqdialog .ui-jqdialog-titlebar {
 	padding: .1em .1em; 
@@ -524,7 +524,7 @@ div.tablediv > .table-bordered {
 /* Form edit */
 .ui-jqdialog-content .FormGrid { 
 	margin: 0 8px 0 8px; 
-	overflow:auto;
+	overflow:visible !important;;
 	position:relative;
 }
 .ui-jqdialog-content .EditTable { 
@@ -927,3 +927,12 @@ td.menu_text {
 .search_buttons #bs_search {
 	margin-left: 3px;
 }
+/**
+ * 为了使行内pickertree下拉框显示出来
+ */
+.ui-jqgrid .ui-jqgrid-btable tbody tr.jqgrow td.edit-cell.success{overflow: inherit;}
+.picker .form-inline .form-group input{width: 100%;}
+/* 编辑情况下,行高度调整 */
+/* .ui-jqgrid .ui-jqgrid-btable tbody tr.jqgrow td.edit-cell.success {padding: 2px;}
+.ui-jqgrid .ui-jqgrid-btable tbody tr.jqgrow td {vertical-align: middle;}
+.ui-jqgrid td input, .ui-jqgrid td select, .ui-jqgrid td textarea {height: 25px;} */

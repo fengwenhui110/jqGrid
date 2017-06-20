@@ -679,7 +679,17 @@ $.jgrid.extend({
 			});
 		});
 		return ret;
-	}
+	},
+	//保存当前处于编辑状态的单元格
+  saveEditCell:function(){
+      return this.each(function() {
+          var $t = this;
+          if (!$t.grid || $t.p.cellEdit !== true) {return;}
+          if ($t.p.savedRow.length>0) {
+              $($t).jqGrid("saveCell",$t.p.savedRow[0].id,$t.p.savedRow[0].ic);
+          }
+      })
+  }
 /// end  cell editing
 });
 //module end

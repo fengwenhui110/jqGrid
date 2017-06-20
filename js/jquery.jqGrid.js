@@ -1,6 +1,6 @@
 /**
 *
-* @license Guriddo jqGrid JS - v5.2.1 - 2017-06-16
+* @license Guriddo jqGrid JS - v5.2.1 - 2017-06-20
 * Copyright(c) 2008, Tony Tomov, tony@trirand.com
 * 
 * License: http://guriddo.net/?page_id=103334
@@ -21,7 +21,11 @@
 //module begin
 $.jgrid = $.jgrid || {};
 if(!$.jgrid.hasOwnProperty("defaults")) {
-	$.jgrid.defaults = {};
+	$.jgrid.defaults = {
+		styleUI: 'Bootstrap',
+		responsive: true,
+		regional: 'cn'
+	};
 }
 $.extend($.jgrid,{
 	version : "5.2.1",
@@ -6322,7 +6326,17 @@ $.jgrid.extend({
 			});
 		});
 		return ret;
-	}
+	},
+	//保存当前处于编辑状态的单元格
+  saveEditCell:function(){
+      return this.each(function() {
+          var $t = this;
+          if (!$t.grid || $t.p.cellEdit !== true) {return;}
+          if ($t.p.savedRow.length>0) {
+              $($t).jqGrid("saveCell",$t.p.savedRow[0].id,$t.p.savedRow[0].ic);
+          }
+      })
+  }
 /// end  cell editing
 });
 
@@ -9060,7 +9074,9 @@ $.jgrid.extend({
 						//pickerTree组件需要在elc统计节点生成span标签，需要在elc完成append操作再初始化
             if (this.edittype == "pickerTree") {
                 var setting = $.extend(opt, { targetElem: elc, selected: tmp });
-                new cngc.pickerTree(setting);
+                window.setTimeout(function(){
+                  new cngc.pickerTree(setting);
+                },0);
             }
 					}
 				});
